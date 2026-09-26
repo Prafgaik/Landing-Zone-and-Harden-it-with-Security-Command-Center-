@@ -1,0 +1,60 @@
+##### Migrate and Modernize a Web Application with Google Cloud: Challenge Lab
+
+Step 1: Create the GKE Cluster
+
+gcloud container clusters create cymbal-k8-cluster \
+    --zone=us-east1-b \
+    --num-nodes=1 \
+    --image-type=ubuntu_containerd \
+    --machine-type=e2-medium
+
+Initialize the filters file:
+
+./m2c copy default-filters > filters.txt
+
+./m2c copy gcloud \
+    -p qwiklabs-gcp-02-50a4ac09f32d \
+    -z us-east1-b \
+    -n cymbal-web-vm \
+    -o cymbal-web-vm-filesystem \
+    --filters filters.txt
+
+Step 3: Copy, Analyze, and Generate Container Artifacts
+
+./m2c analyze \
+    -s cymbal-web-vm-filesystem \
+    -p linux-vm-container \
+    -o cymbal-web-vm-analysis-output
+
+Generate the deployment artifacts: 
+
+./m2c generate \
+    -i cymbal-web-vm-analysis-output \
+    -o cymbal-migration-artifacts
+
+Get GKE cluster credentials:
+
+gcloud container clusters get-credentials cymbal-k8-cluster --zone us-east1-b --project qwiklabs-gcp-02-50a4ac09f32d
+
+Change directory to your artifacts and run Skaffold to build and deploy:
+
+cd cymbal-migration-artifacts
+skaffold run -d eu.gcr.io/qwiklabs-gcp-02-50a4ac09f32d
+
+Confirm the external IP of the GKE service:
+
+kubectl get service cymbal-web-service
+
+Task 3: Deploy the Container to Cloud Run
+
+gcloud run deploy cymbal-web-serverless \
+    --image=eu.gcr.io/qwiklabs-gcp-02-50a4ac09f32d/linux-system \
+    --region=us-east1 \
+    --allow-unauthenticated \
+    --port=80
+
+If its web page not working 
+gcloud run services add-iam-policy-binding cymbal-web-serverless \
+    --region=us-east1 \
+    --member="allUsers" \
+    --role="roles/run.invoker"
